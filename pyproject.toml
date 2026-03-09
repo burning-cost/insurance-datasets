@@ -29,8 +29,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/burningcost/insurance-datasets"
-Repository = "https://github.com/burningcost/insurance-datasets"
+Homepage = "https://github.com/burning-cost/insurance-datasets"
+Repository = "https://github.com/burning-cost/insurance-datasets"
 
 [build-system]
 requires = ["hatchling"]

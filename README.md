@@ -3,10 +3,11 @@
 [![CI](https://github.com/burning-cost/insurance-datasets/actions/workflows/ci.yml/badge.svg)](https://github.com/burning-cost/insurance-datasets/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/insurance-datasets)](https://pypi.org/project/insurance-datasets/)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
-Synthetic UK insurance datasets with known data generating processes. Built for testing pricing models.
+Synthetic UK insurance datasets with known data generating processes. Built for testing pricing models — this is the dataset used throughout the [Burning Cost training course](https://burning-cost.github.io/course/).
 
-When you are developing a GLM, a gradient boosted tree model, or any other pricing algorithm, you need data where you know what the right answer is. Real policyholder data is messy, access-controlled, and the true coefficients are unknown. This package gives you clean, realistic synthetic data where the true parameters are published — so you can verify your implementation produces the right coefficients.
+When you are developing a GLM, a gradient boosted tree, or any other pricing algorithm, you need data where you know what the right answer is. Real policyholder data is messy, access-controlled, and the true coefficients are unknown. This package gives you clean, realistic synthetic data where the true parameters are published — so you can verify your implementation produces the right coefficients.
 
 Two datasets are available:
 
@@ -16,13 +17,13 @@ Two datasets are available:
 ## Installation
 
 ```bash
-uv add insurance-datasets
+pip install insurance-datasets
 ```
 
-Or with pip:
+Or with `uv`:
 
 ```bash
-pip install insurance-datasets
+uv add insurance-datasets
 ```
 
 Requires Python 3.10+. Dependencies: numpy, pandas.
@@ -33,99 +34,141 @@ Requires Python 3.10+. Dependencies: numpy, pandas.
 from insurance_datasets import load_motor, load_home
 
 motor = load_motor(n_policies=50_000, seed=42)
-home = load_home(n_policies=50_000, seed=42)
+home  = load_home(n_policies=50_000, seed=42)
 
-print(motor.head())
-print(motor.dtypes)
+print(motor.shape)   # (50000, 18)
+print(home.shape)    # (50000, 16)
 ```
 
-### Motor dataset
+---
 
-```python
-from insurance_datasets import load_motor, MOTOR_TRUE_FREQ_PARAMS, MOTOR_TRUE_SEV_PARAMS
+## Motor dataset
 
-df = load_motor(n_policies=50_000, seed=42)
+`load_motor()` returns one row per policy. Default: 50,000 policies, accident years 2019–2023.
 
-# One row per policy
-# policy_id, inception_date, expiry_date, accident_year,
-# vehicle_age, vehicle_group, driver_age, driver_experience,
-# ncd_years, ncd_protected, conviction_points, annual_mileage,
-# area, occupation_class, policy_type,
-# claim_count, incurred, exposure
+### Columns
 
-print(f"Claim frequency: {df['claim_count'].sum() / df['exposure'].sum():.3f}")
-print(f"Mean incurred (claims only): {df[df['claim_count']>0]['incurred'].mean():.0f}")
-```
+| Column | Type | Description |
+|---|---|---|
+| `policy_id` | int | Sequential identifier |
+| `inception_date` | date | Policy start |
+| `expiry_date` | date | Policy end (may be < 12 months for cancellations) |
+| `accident_year` | int | Year of inception — use for cohort splits |
+| `vehicle_age` | int | 0–20 years |
+| `vehicle_group` | int | ABI group 1–50 |
+| `driver_age` | int | 17–85 |
+| `driver_experience` | int | Years licensed |
+| `ncd_years` | int | 0–5 (UK NCD scale) |
+| `ncd_protected` | bool | Protected NCD flag |
+| `conviction_points` | int | Total endorsement points (0 = clean) |
+| `annual_mileage` | int | 2,000–30,000 miles |
+| `area` | str | ABI area band A–F (A = rural/low risk, F = inner city) |
+| `occupation_class` | int | 1–5 |
+| `policy_type` | str | `'Comp'` or `'TPFT'` |
+| `claim_count` | int | Number of claims in period |
+| `incurred` | float | Total incurred cost (£); 0.0 if no claims |
+| `exposure` | float | Earned years (< 1.0 for cancellations) |
 
-### Home dataset
+### True DGP — frequency
 
-```python
-from insurance_datasets import load_home, HOME_TRUE_FREQ_PARAMS, HOME_TRUE_SEV_PARAMS
-
-df = load_home(n_policies=50_000, seed=42)
-
-# policy_id, inception_date, expiry_date, accident_year,
-# region, property_value, contents_value, construction_type,
-# flood_zone, is_subsidence_risk, security_level, bedrooms,
-# property_age_band, claim_count, incurred, exposure
-
-z1 = df[df["flood_zone"] == "Zone 1"]
-z3 = df[df["flood_zone"] == "Zone 3"]
-ratio = (z3["claim_count"].sum() / z3["exposure"].sum()) / (z1["claim_count"].sum() / z1["exposure"].sum())
-print(f"Zone 3 vs Zone 1 frequency ratio: {ratio:.2f}x  (true DGP implies exp(0.85) = 2.34x)")
-```
-
-## Data generating processes
-
-### Motor: true parameters
-
-The frequency model is Poisson with a log-linear predictor:
+Poisson frequency model with log-linear predictor:
 
 ```
 log(lambda) = log(exposure) + intercept
-            + vehicle_group_coef * vehicle_group_value
+            + vehicle_group_coef * vehicle_group
             + driver_age_young * I(driver_age < 25)
-            + driver_age_old * I(driver_age >= 70)
-            + ncd_years_coef * ncd_years_value
-            + area_B * I(area == 'B')  ...  + area_F * I(area == 'F')
-            + has_convictions * I(conviction_points > 0)
+            + driver_age_old   * I(driver_age >= 70)
+            + ncd_years_coef   * ncd_years
+            + area_B * I(area == 'B') ... area_F * I(area == 'F')
+            + has_convictions  * I(conviction_points > 0)
 ```
 
+Ages 25–29 blend linearly from the young-driver load down to zero by age 30.
+
 ```python
-from insurance_datasets import MOTOR_TRUE_FREQ_PARAMS, MOTOR_TRUE_SEV_PARAMS
+from insurance_datasets import MOTOR_TRUE_FREQ_PARAMS
 
 print(MOTOR_TRUE_FREQ_PARAMS)
 # {'intercept': -3.2, 'vehicle_group': 0.025, 'driver_age_young': 0.55,
 #  'driver_age_old': 0.3, 'ncd_years': -0.12, 'area_B': 0.1, 'area_C': 0.2,
 #  'area_D': 0.35, 'area_E': 0.5, 'area_F': 0.65, 'has_convictions': 0.45}
+```
+
+Baseline frequency at intercept -3.2 gives a portfolio average of roughly 8% per year.
+
+### True DGP — severity
+
+Gamma severity model with shape=2 (coefficient of variation ~0.71):
+
+```python
+from insurance_datasets import MOTOR_TRUE_SEV_PARAMS
 
 print(MOTOR_TRUE_SEV_PARAMS)
 # {'intercept': 7.8, 'vehicle_group': 0.018, 'driver_age_young': 0.25}
 ```
 
-The age effect blends linearly between 25 and 30 — ages 25-29 have a partial young-driver load. The severity model uses a Gamma distribution with shape=2 (coefficient of variation ~0.71).
+Baseline severity at intercept 7.8 gives a mean of roughly £2,440.
 
-### Home: true parameters
+---
+
+## Home dataset
+
+`load_home()` returns one row per policy. Default: 50,000 policies, accident years 2019–2023.
+
+### Columns
+
+| Column | Type | Description |
+|---|---|---|
+| `policy_id` | int | Sequential identifier |
+| `inception_date` | date | Policy start |
+| `expiry_date` | date | Policy end |
+| `accident_year` | int | Year of inception |
+| `region` | str | UK region (ONS groupings, 12 values) |
+| `property_value` | int | Buildings sum insured (£); regional log-normal |
+| `contents_value` | int | Contents sum insured (£) |
+| `construction_type` | str | `'Standard'`, `'Non-Standard'`, or `'Listed'` |
+| `flood_zone` | str | Environment Agency zone: `'Zone 1'`, `'Zone 2'`, `'Zone 3'` |
+| `is_subsidence_risk` | bool | High-subsidence area (London clay, Midlands) |
+| `security_level` | str | `'Basic'`, `'Standard'`, or `'Enhanced'` |
+| `bedrooms` | int | 1–5 |
+| `property_age_band` | str | Construction era: Pre-1900, 1900–1945, 1945–1980, 1980–2000, Post-2000 |
+| `claim_count` | int | Number of claims in period |
+| `incurred` | float | Total incurred cost (£); 0.0 if no claims |
+| `exposure` | float | Earned years |
+
+### True DGP — frequency
 
 ```python
-from insurance_datasets import HOME_TRUE_FREQ_PARAMS, HOME_TRUE_SEV_PARAMS
+from insurance_datasets import HOME_TRUE_FREQ_PARAMS
 
 print(HOME_TRUE_FREQ_PARAMS)
 # {'intercept': -2.8, 'property_value_log': 0.18,
 #  'construction_non_standard': 0.4, 'construction_listed': 0.25,
 #  'flood_zone_2': 0.3, 'flood_zone_3': 0.85, 'subsidence_risk': 0.55,
 #  'security_standard': -0.1, 'security_enhanced': -0.25}
+```
+
+`property_value_log` and `contents_value_log` are scaled as `log(value / reference)` — `log(property_value / 250_000)` and `log(contents_value / 30_000)` respectively.
+
+### True DGP — severity
+
+Gamma severity model with shape=1.5 (CV ~0.82 — household claims are more volatile than motor):
+
+```python
+from insurance_datasets import HOME_TRUE_SEV_PARAMS
 
 print(HOME_TRUE_SEV_PARAMS)
 # {'intercept': 8.1, 'property_value_log': 0.35,
 #  'flood_zone_3': 0.45, 'contents_value_log': 0.22}
 ```
 
-The home severity model uses Gamma with shape=1.5 (CV ~0.82). Household claims have higher severity volatility than motor — large flood and escape-of-water events create a fatter tail.
+Baseline severity at intercept 8.1 gives a mean of roughly £3,300.
 
-## GLM coefficient recovery example
+---
 
-The point of known DGP parameters is that you can verify your model implementation. Here is a worked example with `statsmodels`:
+## Verifying your model against the true parameters
+
+The point of a known DGP is that you can check your implementation. Here is a worked GLM example:
 
 ```python
 import numpy as np
@@ -133,11 +176,8 @@ import statsmodels.api as sm
 from insurance_datasets import load_motor, MOTOR_TRUE_FREQ_PARAMS
 
 df = load_motor(n_policies=50_000, seed=42)
-
-# Create binary conviction flag (matches the DGP)
 df["has_convictions"] = (df["conviction_points"] > 0).astype(int)
 
-# Area dummies (A is the base level)
 for band in ["B", "C", "D", "E", "F"]:
     df[f"area_{band}"] = (df["area"] == band).astype(int)
 
@@ -147,13 +187,12 @@ features = [
 ]
 X = sm.add_constant(df[features])
 
-model = sm.GLM(
+result = sm.GLM(
     df["claim_count"],
     X,
     family=sm.families.Poisson(),
     offset=np.log(df["exposure"].clip(lower=1e-6)),
-)
-result = model.fit(disp=False)
+).fit(disp=False)
 
 print("Parameter recovery:")
 print(f"  vehicle_group: fitted={result.params['vehicle_group']:.4f}  true={MOTOR_TRUE_FREQ_PARAMS['vehicle_group']:.4f}")
@@ -161,64 +200,59 @@ print(f"  ncd_years:     fitted={result.params['ncd_years']:.4f}  true={MOTOR_TR
 print(f"  convictions:   fitted={result.params['has_convictions']:.3f}  true={MOTOR_TRUE_FREQ_PARAMS['has_convictions']:.3f}")
 ```
 
-At 50k policies, slope estimates should be within a few percent of the true values. The intercept will differ if you omit any factor from the true DGP — the model absorbs the omitted effects into the intercept.
+At 50k policies, slope estimates should be within a few percent of the true values. The intercept will differ if you omit any factor from the true DGP — the model absorbs omitted effects into the intercept.
 
-## CatBoost example
-
-If you are calibrating a gradient boosted tree and want to verify it respects the known monotonic relationships:
+### Verifying a flood zone relativity (home)
 
 ```python
-import numpy as np
-import pandas as pd
-from catboost import CatBoostRegressor, Pool
-from insurance_datasets import load_motor
+from insurance_datasets import load_home
 
-df = load_motor(n_policies=50_000, seed=42)
-df["has_convictions"] = (df["conviction_points"] > 0).astype(int)
+df = load_home(n_policies=50_000, seed=42)
 
-features = ["vehicle_group", "driver_age", "ncd_years", "has_convictions", "annual_mileage"]
-X = df[features]
-y = df["claim_count"] / df["exposure"]
-
-pool = Pool(X, label=y)
-model = CatBoostRegressor(iterations=500, depth=6, learning_rate=0.05, verbose=0)
-model.fit(pool)
-
-# Feature importances should rank ncd_years and driver_age highly
-fi = pd.Series(model.get_feature_importance(), index=features).sort_values(ascending=False)
-print(fi)
+z1 = df[df["flood_zone"] == "Zone 1"]
+z3 = df[df["flood_zone"] == "Zone 3"]
+ratio = (z3["claim_count"].sum() / z3["exposure"].sum()) / (z1["claim_count"].sum() / z1["exposure"].sum())
+print(f"Zone 3 vs Zone 1 frequency ratio: {ratio:.2f}x")
+# True DGP implies exp(0.85) = 2.34x — you should be close to this unadjusted
 ```
+
+---
 
 ## Design choices
 
-**Why Poisson-Gamma and not something more exotic?** GLMs are still the industry standard for personal lines pricing. The DGP matches what a correctly specified production model would use. If you want to test Tweedie models, use the raw `incurred` as the response — the data supports it.
+**Why Poisson-Gamma and not something more exotic?** GLMs are the industry standard for personal lines pricing in the UK. The DGP matches what a correctly specified production model would use. If you want to test Tweedie models, use raw `incurred` as the response — the data supports it.
 
 **Why no missing values?** This is a testing dataset. Missing value imputation is a separate problem. Mixing the two makes it harder to isolate algorithm correctness.
 
-**Why 50,000 policies as the default?** Below about 10,000 policies, coefficient estimates become noisy enough that a correct implementation can look wrong. At 50,000 the estimates are stable. For quick unit tests, 1,000-5,000 is sufficient.
+**Why 50,000 policies as the default?** Below about 10,000 policies, coefficient estimates become noisy enough that a correct implementation can look wrong. At 50,000 the estimates are stable. For quick unit tests, 1,000–5,000 is sufficient.
 
-**Why is the home DGP simpler than motor?** The motor DGP has more interacting factors because motor pricing in the UK has more rating variables and more data to calibrate them. The home DGP reflects a less mature pricing environment where the dominant factors (flood, construction, subsidence) are fewer and cleaner.
+**Why is the home DGP simpler than motor?** Motor pricing in the UK has more rating variables with stronger interactions. The home DGP reflects a less mature pricing environment where a handful of factors (flood zone, construction type, subsidence) dominate.
+
+---
 
 ## Running the tests
 
-Tests require `statsmodels` for the GLM recovery check:
+Tests include a GLM coefficient recovery check and require `statsmodels`:
 
 ```bash
 uv add --dev statsmodels
 uv run pytest
 ```
 
+---
+
 ## Related libraries
 
 | Library | Why it's relevant |
-|---------|------------------|
+|---|---|
 | [insurance-synthetic](https://github.com/burning-cost/insurance-synthetic) | Generate portfolio-fitted synthetic data — use when you need data matched to your own book rather than a fixed DGP |
 | [insurance-interactions](https://github.com/burning-cost/insurance-interactions) | GLM interaction detection — use this dataset to validate that the CANN pipeline recovers known interaction structure |
-| [bayesian-pricing](https://github.com/burning-cost/bayesian-pricing) | Hierarchical Bayesian models — use this dataset to test that the model recovers the true thin-cell parameters |
-| [shap-relativities](https://github.com/burning-cost/shap-relativities) | SHAP-based relativities from GBMs — use this dataset to verify that SHAP recovers the true relativities |
-| [insurance-cv](https://github.com/burning-cost/insurance-cv) | Walk-forward cross-validation — this dataset provides the controlled environment to benchmark CV strategies |
+| [insurance-cv](https://github.com/burning-cost/insurance-cv) | Walk-forward cross-validation — this dataset gives a controlled environment to benchmark CV strategies |
+| [insurance-validation](https://github.com/burning-cost/insurance-validation) | Model validation tools — use with this dataset to check validation metrics against known true parameters |
 
-[All Burning Cost libraries →](https://burning-cost.github.io)
+[All Burning Cost libraries and course](https://burning-cost.github.io/course/) →
+
+---
 
 ## Licence
 
