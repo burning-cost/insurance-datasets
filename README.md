@@ -1,5 +1,8 @@
 # insurance-datasets
+
 [![CI](https://github.com/burning-cost/insurance-datasets/actions/workflows/ci.yml/badge.svg)](https://github.com/burning-cost/insurance-datasets/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/insurance-datasets)](https://pypi.org/project/insurance-datasets/)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 
 Synthetic UK insurance datasets with known data generating processes. Built for testing pricing models.
 
@@ -204,6 +207,18 @@ Tests require `statsmodels` for the GLM recovery check:
 uv add --dev statsmodels
 uv run pytest
 ```
+
+## Related libraries
+
+| Library | Why it's relevant |
+|---------|------------------|
+| [insurance-synthetic](https://github.com/burning-cost/insurance-synthetic) | Generate portfolio-fitted synthetic data — use when you need data matched to your own book rather than a fixed DGP |
+| [insurance-interactions](https://github.com/burning-cost/insurance-interactions) | GLM interaction detection — use this dataset to validate that the CANN pipeline recovers known interaction structure |
+| [bayesian-pricing](https://github.com/burning-cost/bayesian-pricing) | Hierarchical Bayesian models — use this dataset to test that the model recovers the true thin-cell parameters |
+| [shap-relativities](https://github.com/burning-cost/shap-relativities) | SHAP-based relativities from GBMs — use this dataset to verify that SHAP recovers the true relativities |
+| [insurance-cv](https://github.com/burning-cost/insurance-cv) | Walk-forward cross-validation — this dataset provides the controlled environment to benchmark CV strategies |
+
+[All Burning Cost libraries →](https://burning-cost.github.io)
 
 ## Licence
 
