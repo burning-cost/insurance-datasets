@@ -1,4 +1,5 @@
 # insurance-datasets
+[![CI](https://github.com/burning-cost/insurance-datasets/actions/workflows/ci.yml/badge.svg)](https://github.com/burning-cost/insurance-datasets/actions/workflows/ci.yml)
 
 Synthetic UK insurance datasets with known data generating processes. Built for testing pricing models.
 
