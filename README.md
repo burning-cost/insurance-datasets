@@ -241,6 +241,18 @@ uv run pytest
 
 ---
 
+## Capabilities
+
+The notebook at `notebooks/insurance_datasets_demo.py` loads both datasets at 50,000 policies and runs Poisson GLMs for frequency and Gamma GLMs for severity on both motor and home, comparing fitted coefficients to the published true values. It demonstrates:
+
+- **GLM coefficient recovery**: Motor frequency Poisson GLM recovers all major parameters (vehicle group, NCD, area band, convictions) within a few percent of their true values at 50k policies.
+- **Severity recovery**: Gamma GLM with log link recovers the vehicle group and young driver severity parameters accurately.
+- **Home DGP validation**: Flood zone, construction type, and subsidence coefficients are recovered from the home dataset, including the Zone 3 frequency uplift of roughly 2.3x relative to Zone 1.
+- **Ground truth as a testing tool**: The `MOTOR_TRUE_FREQ_PARAMS` and `HOME_TRUE_FREQ_PARAMS` dicts let you quantify how far any modelling implementation deviates from the correctly specified answer — something impossible with real data.
+- **Reproducibility**: All datasets are fully deterministic given a seed; `load_motor(seed=42)` always returns the same 50,000 policies.
+
+---
+
 ## Related libraries
 
 | Library | Why it's relevant |
