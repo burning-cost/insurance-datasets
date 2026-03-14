@@ -266,6 +266,14 @@ The notebook at `notebooks/insurance_datasets_demo.py` loads both datasets at 50
 
 ---
 
+
+## Related Libraries
+
+| Library | What it does |
+|---------|-------------|
+| [insurance-synthetic](https://github.com/burning-cost/insurance-synthetic) | Generate portfolio-fitted synthetic data using vine copulas — use when you need data matched to your own book rather than a fixed DGP |
+| [insurance-cv](https://github.com/burning-cost/insurance-cv) | Temporal cross-validation — this dataset provides a controlled environment to benchmark CV strategies |
+
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
