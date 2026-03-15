@@ -1,6 +1,6 @@
 [project]
 name = "insurance-datasets"
-version = "0.1.0"
+version = "0.1.1"
 description = "Synthetic UK insurance datasets with known data generating processes"
 readme = "README.md"
 license = { text = "MIT" }
@@ -29,8 +29,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/burningcost/insurance-datasets"
-Repository = "https://github.com/burningcost/insurance-datasets"
+Homepage = "https://github.com/burning-cost/insurance-datasets"
+Repository = "https://github.com/burning-cost/insurance-datasets"
+"Bug Tracker" = "https://github.com/burning-cost/insurance-datasets/issues"
+Documentation = "https://github.com/burning-cost/insurance-datasets#readme"
 
 [build-system]
 requires = ["hatchling"]
