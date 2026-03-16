@@ -94,7 +94,11 @@ print(MOTOR_TRUE_FREQ_PARAMS)
 #  'area_D': 0.35, 'area_E': 0.5, 'area_F': 0.65, 'has_convictions': 0.45}
 ```
 
-The intercept of -3.2 is the baseline log-frequency for a reference policy (area A, no convictions, zero NCD, average vehicle group). `exp(-3.2) ≈ 4.1%` per year. The portfolio average frequency is higher because most policies sit above the reference level on at least one factor.
+The intercept -3.2 is the log-space baseline: exp(-3.2) ≈ 4.1% is the frequency
+for a base-category risk (area A, no convictions, zero NCD, at vehicle group 0)
+with one year of exposure. The portfolio average frequency is approximately 10%
+per year after all factor loadings push the mean up — young drivers, higher
+vehicle groups, and urban areas all contribute positively.
 
 ### True DGP — severity
 
@@ -168,7 +172,9 @@ Baseline severity at intercept 8.1 gives a mean of roughly £3,300.
 
 ## Verifying your model against the true parameters
 
-The point of a known DGP is that you can check your implementation. Here is a worked GLM example. Note that `driver_age` must be included — omitting it biases the NCD and convictions coefficients because the young-driver frequency load is partially absorbed into correlated factors.
+The point of a known DGP is that you can check your implementation. Here is a worked GLM example.
+
+The DGP includes `driver_age_young` and `driver_age_old` effects in the frequency model. Including driver age in the fitted model is important — omitting it causes omitted variable bias and the intercept absorbs some of the age effect:
 
 ```python
 import numpy as np
@@ -177,15 +183,15 @@ from insurance_datasets import load_motor, MOTOR_TRUE_FREQ_PARAMS
 
 df = load_motor(n_policies=50_000, seed=42)
 df["has_convictions"] = (df["conviction_points"] > 0).astype(int)
-df["young_driver"] = (df["driver_age"] < 25).astype(int)
-df["old_driver"] = (df["driver_age"] >= 70).astype(int)
+df["driver_age_young"] = (df["driver_age"] < 25).astype(int)
+df["driver_age_old"] = (df["driver_age"] >= 70).astype(int)
 
 for band in ["B", "C", "D", "E", "F"]:
     df[f"area_{band}"] = (df["area"] == band).astype(int)
 
 features = [
-    "vehicle_group", "young_driver", "old_driver",
-    "ncd_years", "has_convictions",
+    "vehicle_group", "ncd_years", "has_convictions",
+    "driver_age_young", "driver_age_old",
     "area_B", "area_C", "area_D", "area_E", "area_F",
 ]
 X = sm.add_constant(df[features])
@@ -198,13 +204,13 @@ result = sm.GLM(
 ).fit(disp=False)
 
 print("Parameter recovery:")
-print(f"  vehicle_group: fitted={result.params['vehicle_group']:.4f}  true={MOTOR_TRUE_FREQ_PARAMS['vehicle_group']:.4f}")
-print(f"  ncd_years:     fitted={result.params['ncd_years']:.4f}  true={MOTOR_TRUE_FREQ_PARAMS['ncd_years']:.4f}")
-print(f"  young_driver:  fitted={result.params['young_driver']:.3f}  true={MOTOR_TRUE_FREQ_PARAMS['driver_age_young']:.3f}")
-print(f"  convictions:   fitted={result.params['has_convictions']:.3f}  true={MOTOR_TRUE_FREQ_PARAMS['has_convictions']:.3f}")
+print(f"  vehicle_group:     fitted={result.params['vehicle_group']:.4f}  true={MOTOR_TRUE_FREQ_PARAMS['vehicle_group']:.4f}")
+print(f"  ncd_years:         fitted={result.params['ncd_years']:.4f}  true={MOTOR_TRUE_FREQ_PARAMS['ncd_years']:.4f}")
+print(f"  convictions:       fitted={result.params['has_convictions']:.3f}  true={MOTOR_TRUE_FREQ_PARAMS['has_convictions']:.3f}")
+print(f"  driver_age_young:  fitted={result.params['driver_age_young']:.3f}  true={MOTOR_TRUE_FREQ_PARAMS['driver_age_young']:.3f}")
 ```
 
-At 50k policies, slope estimates should be within a few percent of the true values. Omitting `young_driver` from the formula introduces omitted variable bias — NCD and convictions will both appear inflated because they are correlated with driver age in this portfolio.
+At 50k policies, slope estimates should be within a few percent of the true values. Omitting `driver_age_young` from the formula introduces omitted variable bias — NCD and convictions will both appear inflated because they are correlated with driver age in this portfolio.
 
 ### Verifying a flood zone relativity (home)
 

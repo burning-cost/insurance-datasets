@@ -45,7 +45,8 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 
 TRUE_FREQ_PARAMS: Final[dict[str, float]] = {
-    "intercept": -3.2,          # baseline (reference policy): exp(-3.2) ≈ 4.1%
+    "intercept": -3.2,          # log-space intercept; exp(-3.2) ≈ 4.1% base rate
+                                 # (before factor loadings; portfolio average ~10% after all effects)
     "vehicle_group": 0.025,     # per ABI group unit (1-50)
     "driver_age_young": 0.55,   # additional log-frequency for drivers under 25
     "driver_age_old": 0.30,     # additional log-frequency for drivers over 70
