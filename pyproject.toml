@@ -1,6 +1,6 @@
 [project]
 name = "insurance-datasets"
-version = "0.1.1"
+version = "0.1.2"
 description = "Synthetic UK insurance datasets with known data generating processes"
 readme = "README.md"
 license = { text = "MIT" }
@@ -44,3 +44,8 @@ packages = ["src/insurance_datasets"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "statsmodels>=0.14.6",
+]

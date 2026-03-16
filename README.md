@@ -44,7 +44,7 @@ print(home.shape)    # (50000, 16)
 
 ## Motor dataset
 
-`load_motor()` returns one row per policy. Default: 50,000 policies, accident years 2019–2023.
+`load_motor()` returns one row per policy. Default: 50,000 policies, inception years 2019–2023.
 
 ### Columns
 
@@ -53,7 +53,7 @@ print(home.shape)    # (50000, 16)
 | `policy_id` | int | Sequential identifier |
 | `inception_date` | date | Policy start |
 | `expiry_date` | date | Policy end (may be < 12 months for cancellations) |
-| `accident_year` | int | Year of inception — use for cohort splits |
+| `inception_year` | int | Calendar year of inception — use for cohort splits |
 | `vehicle_age` | int | 0–20 years |
 | `vehicle_group` | int | ABI group 1–50 |
 | `driver_age` | int | 17–85 |
@@ -94,7 +94,7 @@ print(MOTOR_TRUE_FREQ_PARAMS)
 #  'area_D': 0.35, 'area_E': 0.5, 'area_F': 0.65, 'has_convictions': 0.45}
 ```
 
-Baseline frequency at intercept -3.2 gives a portfolio average of roughly 8% per year.
+The intercept of -3.2 is the baseline log-frequency for a reference policy (area A, no convictions, zero NCD, average vehicle group). `exp(-3.2) ≈ 4.1%` per year. The portfolio average frequency is higher because most policies sit above the reference level on at least one factor.
 
 ### True DGP — severity
 
@@ -113,7 +113,7 @@ Baseline severity at intercept 7.8 gives a mean of roughly £2,440.
 
 ## Home dataset
 
-`load_home()` returns one row per policy. Default: 50,000 policies, accident years 2019–2023.
+`load_home()` returns one row per policy. Default: 50,000 policies, inception years 2019–2023.
 
 ### Columns
 
@@ -122,7 +122,7 @@ Baseline severity at intercept 7.8 gives a mean of roughly £2,440.
 | `policy_id` | int | Sequential identifier |
 | `inception_date` | date | Policy start |
 | `expiry_date` | date | Policy end |
-| `accident_year` | int | Year of inception |
+| `inception_year` | int | Calendar year of inception |
 | `region` | str | UK region (ONS groupings, 12 values) |
 | `property_value` | int | Buildings sum insured (£); regional log-normal |
 | `contents_value` | int | Contents sum insured (£) |
@@ -168,7 +168,7 @@ Baseline severity at intercept 8.1 gives a mean of roughly £3,300.
 
 ## Verifying your model against the true parameters
 
-The point of a known DGP is that you can check your implementation. Here is a worked GLM example:
+The point of a known DGP is that you can check your implementation. Here is a worked GLM example. Note that `driver_age` must be included — omitting it biases the NCD and convictions coefficients because the young-driver frequency load is partially absorbed into correlated factors.
 
 ```python
 import numpy as np
@@ -177,12 +177,15 @@ from insurance_datasets import load_motor, MOTOR_TRUE_FREQ_PARAMS
 
 df = load_motor(n_policies=50_000, seed=42)
 df["has_convictions"] = (df["conviction_points"] > 0).astype(int)
+df["young_driver"] = (df["driver_age"] < 25).astype(int)
+df["old_driver"] = (df["driver_age"] >= 70).astype(int)
 
 for band in ["B", "C", "D", "E", "F"]:
     df[f"area_{band}"] = (df["area"] == band).astype(int)
 
 features = [
-    "vehicle_group", "ncd_years", "has_convictions",
+    "vehicle_group", "young_driver", "old_driver",
+    "ncd_years", "has_convictions",
     "area_B", "area_C", "area_D", "area_E", "area_F",
 ]
 X = sm.add_constant(df[features])
@@ -197,10 +200,11 @@ result = sm.GLM(
 print("Parameter recovery:")
 print(f"  vehicle_group: fitted={result.params['vehicle_group']:.4f}  true={MOTOR_TRUE_FREQ_PARAMS['vehicle_group']:.4f}")
 print(f"  ncd_years:     fitted={result.params['ncd_years']:.4f}  true={MOTOR_TRUE_FREQ_PARAMS['ncd_years']:.4f}")
+print(f"  young_driver:  fitted={result.params['young_driver']:.3f}  true={MOTOR_TRUE_FREQ_PARAMS['driver_age_young']:.3f}")
 print(f"  convictions:   fitted={result.params['has_convictions']:.3f}  true={MOTOR_TRUE_FREQ_PARAMS['has_convictions']:.3f}")
 ```
 
-At 50k policies, slope estimates should be within a few percent of the true values. The intercept will differ if you omit any factor from the true DGP — the model absorbs omitted effects into the intercept.
+At 50k policies, slope estimates should be within a few percent of the true values. Omitting `young_driver` from the formula introduces omitted variable bias — NCD and convictions will both appear inflated because they are correlated with driver age in this portfolio.
 
 ### Verifying a flood zone relativity (home)
 
@@ -228,6 +232,8 @@ print(f"Zone 3 vs Zone 1 frequency ratio: {ratio:.2f}x")
 
 **Why is the home DGP simpler than motor?** Motor pricing in the UK has more rating variables with stronger interactions. The home DGP reflects a less mature pricing environment where a handful of factors (flood zone, construction type, subsidence) dominate.
 
+**Why `inception_year` and not `accident_year`?** In actuarial triangles, accident year means the year a loss *occurred* — which for a synthetic portfolio without claim development would need to be modelled separately from inception. This column is simply the year the policy incepted, so `inception_year` is the right term.
+
 ---
 
 ## Running the tests
@@ -245,7 +251,7 @@ uv run pytest
 
 The notebook at `notebooks/insurance_datasets_demo.py` loads both datasets at 50,000 policies and runs Poisson GLMs for frequency and Gamma GLMs for severity on both motor and home, comparing fitted coefficients to the published true values. It demonstrates:
 
-- **GLM coefficient recovery**: Motor frequency Poisson GLM recovers all major parameters (vehicle group, NCD, area band, convictions) within a few percent of their true values at 50k policies.
+- **GLM coefficient recovery**: Motor frequency Poisson GLM recovers all major parameters (vehicle group, NCD, area band, convictions, driver age) within a few percent of their true values at 50k policies.
 - **Severity recovery**: Gamma GLM with log link recovers the vehicle group and young driver severity parameters accurately.
 - **Home DGP validation**: Flood zone, construction type, and subsidence coefficients are recovered from the home dataset, including the Zone 3 frequency uplift of roughly 2.3x relative to Zone 1.
 - **Ground truth as a testing tool**: The `MOTOR_TRUE_FREQ_PARAMS` and `HOME_TRUE_FREQ_PARAMS` dicts let you quantify how far any modelling implementation deviates from the correctly specified answer — something impossible with real data.
@@ -265,14 +271,6 @@ The notebook at `notebooks/insurance_datasets_demo.py` loads both datasets at 50
 [All Burning Cost libraries and course](https://burning-cost.github.io/course/) →
 
 ---
-
-
-## Related Libraries
-
-| Library | What it does |
-|---------|-------------|
-| [insurance-synthetic](https://github.com/burning-cost/insurance-synthetic) | Generate portfolio-fitted synthetic data using vine copulas — use when you need data matched to your own book rather than a fixed DGP |
-| [insurance-cv](https://github.com/burning-cost/insurance-cv) | Temporal cross-validation — this dataset provides a controlled environment to benchmark CV strategies |
 
 ## Licence
 

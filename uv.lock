@@ -58,6 +58,11 @@ dev = [
     { name = "statsmodels" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "statsmodels" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "numpy", specifier = ">=1.24" },
@@ -66,6 +71,9 @@ requires-dist = [
     { name = "statsmodels", marker = "extra == 'dev'", specifier = ">=0.14.5" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "statsmodels", specifier = ">=0.14.6" }]
 
 [[package]]
 name = "numpy"

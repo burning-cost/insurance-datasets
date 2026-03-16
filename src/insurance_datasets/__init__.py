@@ -38,4 +38,4 @@ __all__ = [
     "HOME_TRUE_SEV_PARAMS",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"

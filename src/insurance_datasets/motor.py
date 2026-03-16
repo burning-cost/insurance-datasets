@@ -45,7 +45,7 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 
 TRUE_FREQ_PARAMS: Final[dict[str, float]] = {
-    "intercept": -3.2,          # log baseline frequency; portfolio average ~10% per year
+    "intercept": -3.2,          # baseline (reference policy): exp(-3.2) ≈ 4.1%
     "vehicle_group": 0.025,     # per ABI group unit (1-50)
     "driver_age_young": 0.55,   # additional log-frequency for drivers under 25
     "driver_age_old": 0.30,     # additional log-frequency for drivers over 70
@@ -134,14 +134,19 @@ def _generate_policies(n: int, rng: np.random.Generator) -> pd.DataFrame:
 
     # Driver age: realistic UK motor book distribution
     # Weighted towards 30-60 bracket (bulk of book), long tail young and old
+    #
+    # Use np.round() for bucket sizes so they sum to n for any integer n.
+    # The last bucket absorbs any residual to guarantee sum == n exactly.
+    fracs = [0.12, 0.30, 0.35, 0.18, 0.05]
+    sizes = [int(np.round(n * f)) for f in fracs]
+    sizes[-1] = n - sum(sizes[:-1])  # absorb rounding residual in last bucket
     driver_ages = np.concatenate([
-        rng.integers(17, 25, size=int(n * 0.12)),
-        rng.integers(25, 40, size=int(n * 0.30)),
-        rng.integers(40, 60, size=int(n * 0.35)),
-        rng.integers(60, 75, size=int(n * 0.18)),
-        rng.integers(75, 86, size=int(n * 0.05)),
+        rng.integers(17, 25, size=sizes[0]),
+        rng.integers(25, 40, size=sizes[1]),
+        rng.integers(40, 60, size=sizes[2]),
+        rng.integers(60, 75, size=sizes[3]),
+        rng.integers(75, 86, size=sizes[4]),
     ])
-    driver_ages = driver_ages[:n]
     rng.shuffle(driver_ages)
 
     # Driver experience: correlated with age, bounded by years since 17
@@ -332,7 +337,7 @@ def load_motor(
         - ``policy_id`` : int — sequential identifier
         - ``inception_date`` : date — policy start
         - ``expiry_date`` : date — policy end (may be < 12 months for cancellations)
-        - ``accident_year`` : int — year of inception (used for cohort splits)
+        - ``inception_year`` : int — calendar year of inception (used for cohort splits)
         - ``vehicle_age`` : int — 0-20 years
         - ``vehicle_group`` : int — ABI group 1-50
         - ``driver_age`` : int — 17-85
@@ -360,7 +365,7 @@ def load_motor(
     Notes
     -----
     The data generating process is documented in ``TRUE_FREQ_PARAMS`` and
-    ``TRUE_SEV_PARAMS``. Policies span accident years 2019-2023. Exposure varies:
+    ``TRUE_SEV_PARAMS``. Policies span inception years 2019-2023. Exposure varies:
     cancellations and mid-term inceptions create sub-annual exposures.
 
     There are no missing values. Real data always has missing values; use this
@@ -370,7 +375,7 @@ def load_motor(
 
     df = _generate_policies(n_policies, rng)
     df["exposure"] = _calculate_earned_exposure(df)
-    df["accident_year"] = pd.to_datetime(df["inception_date"]).dt.year
+    df["inception_year"] = pd.to_datetime(df["inception_date"]).dt.year
     df["claim_count"], df["incurred"] = _generate_claims(df, rng)
     df.insert(0, "policy_id", np.arange(1, n_policies + 1))
 
@@ -378,7 +383,7 @@ def load_motor(
         "policy_id",
         "inception_date",
         "expiry_date",
-        "accident_year",
+        "inception_year",
         "vehicle_age",
         "vehicle_group",
         "driver_age",
@@ -399,7 +404,7 @@ def load_motor(
     df["policy_id"] = df["policy_id"].astype(int)
     df["inception_date"] = pd.to_datetime(df["inception_date"]).dt.date
     df["expiry_date"] = pd.to_datetime(df["expiry_date"]).dt.date
-    df["accident_year"] = df["accident_year"].astype(int)
+    df["inception_year"] = df["inception_year"].astype(int)
     df["vehicle_age"] = df["vehicle_age"].astype(int)
     df["vehicle_group"] = df["vehicle_group"].astype(int)
     df["driver_age"] = df["driver_age"].astype(int)

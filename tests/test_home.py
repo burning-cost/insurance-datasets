@@ -34,7 +34,7 @@ def test_load_home_default_shape() -> None:
 def test_load_home_column_names() -> None:
     df = load_home(n_policies=100, seed=0)
     expected = [
-        "policy_id", "inception_date", "expiry_date", "accident_year",
+        "policy_id", "inception_date", "expiry_date", "inception_year",
         "region", "property_value", "contents_value", "construction_type",
         "flood_zone", "is_subsidence_risk", "security_level", "bedrooms",
         "property_age_band", "claim_count", "incurred", "exposure",
@@ -131,10 +131,10 @@ def test_incurred_positive_when_claim() -> None:
     assert (df.loc[has_claim, "incurred"] > 0).all()
 
 
-def test_accident_year_range() -> None:
+def test_inception_year_range() -> None:
     df = load_home(n_policies=2_000, seed=1)
-    assert df["accident_year"].min() >= 2019
-    assert df["accident_year"].max() <= 2023
+    assert df["inception_year"].min() >= 2019
+    assert df["inception_year"].max() <= 2023
 
 
 # ---------------------------------------------------------------------------

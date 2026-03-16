@@ -38,7 +38,7 @@ def test_load_motor_default_shape() -> None:
 def test_load_motor_column_names() -> None:
     df = load_motor(n_policies=100, seed=0)
     expected = [
-        "policy_id", "inception_date", "expiry_date", "accident_year",
+        "policy_id", "inception_date", "expiry_date", "inception_year",
         "vehicle_age", "vehicle_group", "driver_age", "driver_experience",
         "ncd_years", "ncd_protected", "conviction_points", "annual_mileage",
         "area", "occupation_class", "policy_type",
@@ -134,10 +134,10 @@ def test_annual_mileage_range() -> None:
     assert df["annual_mileage"].max() <= 30_000
 
 
-def test_accident_year_range() -> None:
+def test_inception_year_range() -> None:
     df = load_motor(n_policies=2_000, seed=1)
-    assert df["accident_year"].min() >= 2019
-    assert df["accident_year"].max() <= 2023
+    assert df["inception_year"].min() >= 2019
+    assert df["inception_year"].max() <= 2023
 
 
 # ---------------------------------------------------------------------------
@@ -268,3 +268,24 @@ def test_glm_frequency_intercept_recovery() -> None:
     assert abs(fitted_intercept - true_intercept) < 2.0, (
         f"Intercept {fitted_intercept:.3f} is very far from true {true_intercept:.3f}"
     )
+
+
+# ---------------------------------------------------------------------------
+# P0-1 regression: non-round n_policies must not crash or silently truncate
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("n", [99, 101, 999, 1001, 9999])
+def test_load_motor_non_round_n(n: int) -> None:
+    """
+    For any n, the output must have exactly n rows.
+
+    The driver_age bucket generation uses np.round() + residual absorption.
+    With the old int() truncation, the five bucket sizes could sum to n-1 or
+    n-2 for certain values, causing the [:n] slice to return a shorter array
+    and subsequent operations to raise a ValueError.
+    """
+    df = load_motor(n_policies=n, seed=0)
+    assert len(df) == n, f"Expected {n} rows, got {len(df)}"
+    assert df.shape[1] == 18, f"Expected 18 columns, got {df.shape[1]}"
+    assert df.isnull().sum().sum() == 0

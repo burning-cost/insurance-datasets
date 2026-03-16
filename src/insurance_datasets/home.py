@@ -396,7 +396,7 @@ def load_home(
         - ``policy_id`` : int — sequential identifier
         - ``inception_date`` : date — policy start
         - ``expiry_date`` : date — policy end
-        - ``accident_year`` : int — year of inception
+        - ``inception_year`` : int — calendar year of inception (for cohort splits)
         - ``region`` : str — UK region (ONS groupings)
         - ``property_value`` : int — buildings sum insured (£)
         - ``contents_value`` : int — contents sum insured (£)
@@ -431,7 +431,7 @@ def load_home(
 
     df = _generate_policies(n_policies, rng)
     df["exposure"] = _calculate_earned_exposure(df)
-    df["accident_year"] = pd.to_datetime(df["inception_date"]).dt.year
+    df["inception_year"] = pd.to_datetime(df["inception_date"]).dt.year
     df["claim_count"], df["incurred"] = _generate_claims(df, rng)
     df.insert(0, "policy_id", np.arange(1, n_policies + 1))
 
@@ -439,7 +439,7 @@ def load_home(
         "policy_id",
         "inception_date",
         "expiry_date",
-        "accident_year",
+        "inception_year",
         "region",
         "property_value",
         "contents_value",
@@ -458,7 +458,7 @@ def load_home(
     df["policy_id"] = df["policy_id"].astype(int)
     df["inception_date"] = pd.to_datetime(df["inception_date"]).dt.date
     df["expiry_date"] = pd.to_datetime(df["expiry_date"]).dt.date
-    df["accident_year"] = df["accident_year"].astype(int)
+    df["inception_year"] = df["inception_year"].astype(int)
     df["property_value"] = df["property_value"].astype(int)
     df["contents_value"] = df["contents_value"].astype(int)
     df["is_subsidence_risk"] = df["is_subsidence_risk"].astype(bool)

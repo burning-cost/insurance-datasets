@@ -143,6 +143,11 @@ print(const_stats.to_string(index=False))
 
 # MAGIC %md
 # MAGIC ## 3. Motor frequency GLM: coefficient recovery
+# MAGIC
+# MAGIC The DGP includes a driver_age effect (young <25 and old >=70). Omitting
+# MAGIC driver_age from the model causes omitted variable bias: ncd_years and
+# MAGIC has_convictions both absorb part of the age effect because they are
+# MAGIC correlated with driver age. Always include all DGP factors.
 
 # COMMAND ----------
 
@@ -150,11 +155,14 @@ import statsmodels.api as sm
 
 df = motor.copy()
 df["has_convictions"] = (df["conviction_points"] > 0).astype(int)
+df["young_driver"] = (df["driver_age"] < 25).astype(int)
+df["old_driver"] = (df["driver_age"] >= 70).astype(int)
 for band in ["B", "C", "D", "E", "F"]:
     df[f"area_{band}"] = (df["area"] == band).astype(int)
 
 features = [
-    "vehicle_group", "ncd_years", "has_convictions",
+    "vehicle_group", "young_driver", "old_driver",
+    "ncd_years", "has_convictions",
     "area_B", "area_C", "area_D", "area_E", "area_F",
 ]
 X = sm.add_constant(df[features])
@@ -183,6 +191,8 @@ comparison = pd.DataFrame({
     "true": {
         "intercept": MOTOR_TRUE_FREQ_PARAMS["intercept"],
         "vehicle_group": MOTOR_TRUE_FREQ_PARAMS["vehicle_group"],
+        "young_driver": MOTOR_TRUE_FREQ_PARAMS["driver_age_young"],
+        "old_driver": MOTOR_TRUE_FREQ_PARAMS["driver_age_old"],
         "ncd_years": MOTOR_TRUE_FREQ_PARAMS["ncd_years"],
         "has_convictions": MOTOR_TRUE_FREQ_PARAMS["has_convictions"],
         "area_B": MOTOR_TRUE_FREQ_PARAMS["area_B"],
@@ -200,21 +210,27 @@ print(comparison.to_string())
 
 # MAGIC %md
 # MAGIC ## 4. Motor severity GLM
+# MAGIC
+# MAGIC For policies with multiple claims, `incurred` is the sum of all claim costs.
+# MAGIC The correct Gamma GLM uses `claim_count` as frequency weights so each claim
+# MAGIC enters the likelihood individually, rather than modelling average severity
+# MAGIC per policy (which is not Gamma-distributed for multi-claim policies).
 
 # COMMAND ----------
 
 claims_df = df[df["claim_count"] > 0].copy()
-claims_df["avg_severity"] = claims_df["incurred"] / claims_df["claim_count"]
 
 Xs = sm.add_constant(claims_df[["vehicle_group"]])
-# Binary young driver flag
 Xs = Xs.copy()
 Xs["young_driver"] = (claims_df["driver_age"] < 25).astype(int)
 
+# Use freq_weights=claim_count so each claim enters the likelihood separately.
+# This is correct for a Gamma severity model with aggregated data.
 sev_model = sm.GLM(
-    claims_df["avg_severity"],
+    claims_df["incurred"] / claims_df["claim_count"],
     Xs,
     family=sm.families.Gamma(link=sm.families.links.Log()),
+    freq_weights=claims_df["claim_count"],
 )
 sev_result = sev_model.fit(disp=False)
 
@@ -357,6 +373,15 @@ print(f"Spearman rank correlation between GLM and CatBoost predictions: {correla
 # MAGIC with fully documented data generating processes. GLMs recover the true
 # MAGIC coefficients closely at 50k policies. CatBoost ranks policies similarly to
 # MAGIC the correctly specified GLM.
+# MAGIC
+# MAGIC Key points:
+# MAGIC - Include all DGP factors in the frequency model — omitting driver_age
+# MAGIC   causes ~28% bias in ncd_years and has_convictions.
+# MAGIC - For the severity Gamma GLM, use freq_weights=claim_count rather than
+# MAGIC   modelling avg_severity directly; avg_severity is only Gamma-distributed
+# MAGIC   for single-claim policies.
+# MAGIC - The intercept (-3.2) is the baseline for a reference policy; portfolio
+# MAGIC   average frequency is higher because most policies load above the reference.
 # MAGIC
 # MAGIC Both datasets are reproducible via the `seed` parameter and have no missing
 # MAGIC values by design.
