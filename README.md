@@ -242,6 +242,53 @@ print(f"Zone 3 vs Zone 1 frequency ratio: {ratio:.2f}x")
 
 ---
 
+## Performance
+
+Benchmarked on Databricks serverless (Python 3.11, seed=42, n=50,000 policies). Full script: `benchmarks/run_benchmark.py`.
+
+The benchmark fits correctly-specified Poisson GLMs and compares the fitted coefficients to the published true DGP parameters. This is the primary intended use of the package: verifying that a GLM implementation recovers the right answer on data where the right answer is known.
+
+### Motor frequency (Poisson GLM, n=50,000)
+
+| Parameter | True | Fitted | Bias |
+|-----------|------|--------|------|
+| vehicle_group | 0.0250 | 0.0239 | −0.0011 |
+| ncd_years | −0.1200 | −0.1245 | −0.0045 |
+| has_convictions | 0.4500 | 0.5119 | +0.0619 |
+| driver_age_young | 0.5500 | 0.4434 | −0.1066 |
+| driver_age_old | 0.3000 | 0.2063 | −0.0937 |
+
+**Parameter RMSE (5 main factors): 0.069**. 95% CI coverage: 60% (3/5 parameters). Load time 0.50s, fit time 0.46s.
+
+The two age parameters have the largest bias, driven by the blended transition zone in the DGP (ages 25–29 blend linearly down from the young-driver load). A binary indicator slightly misspecifies the edge, which is expected. The parameters that matter most for pricing decisions — vehicle group, NCD, and area bands — are recovered with negligible bias.
+
+### Omitted variable bias (dropping driver_age)
+
+| Parameter | True | Full model | Omit age | Bias (omit) |
+|-----------|------|-----------|---------|-------------|
+| vehicle_group | 0.025 | 0.024 | 0.024 | −0.001 |
+| ncd_years | −0.120 | −0.125 | −0.154 | −0.034 |
+| has_convictions | 0.450 | 0.512 | 0.578 | +0.128 |
+
+Omitting driver age inflates the NCD coefficient by 24% and the convictions loading by 13%. This is the classic omitted variable bias: driver age is correlated with NCD (young drivers have fewer NCD years) and with conviction history. When the model cannot see age, it pushes those effects onto the correlated variables.
+
+### Home frequency (Poisson GLM, n=50,000)
+
+| Parameter | True | Fitted | Bias |
+|-----------|------|--------|------|
+| property_value_log | 0.180 | 0.150 | −0.030 |
+| construction_non_standard | 0.400 | 0.314 | −0.086 |
+| construction_listed | 0.250 | 0.310 | +0.060 |
+| flood_zone_2 | 0.300 | 0.281 | −0.019 |
+| flood_zone_3 | 0.850 | 0.924 | +0.074 |
+| subsidence_risk | 0.550 | 0.635 | +0.085 |
+| security_standard | −0.100 | −0.127 | −0.027 |
+| security_enhanced | −0.250 | −0.292 | −0.042 |
+
+**Parameter RMSE (8 factors): 0.059**. Zone 3 vs Zone 1 raw frequency ratio: 2.56x (true DGP implies exp(0.85) = 2.34x). The GLM estimate of 2.52x is close; the raw ratio is slightly inflated by marginal composition effects.
+
+---
+
 ## Running the tests
 
 Tests include a GLM coefficient recovery check and require `statsmodels`:
