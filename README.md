@@ -17,7 +17,7 @@ Two datasets are available:
 ## Installation
 
 ```bash
-pip install insurance-datasets
+uv add insurance-datasets
 ```
 
 Or with `uv`:
@@ -29,14 +29,14 @@ uv add insurance-datasets
 To use polars output:
 
 ```bash
-pip install insurance-datasets[polars]
+uv add "insurance-datasets[polars]"
 # or
 uv add insurance-datasets[polars]
 ```
 
 > 💬 Questions or feedback? Start a [Discussion](https://github.com/burning-cost/insurance-datasets/discussions). Found it useful? A ⭐ helps others find it.
 
-Requires Python 3.10+. Dependencies: numpy, pandas. Polars is optional: `pip install polars`.
+Requires Python 3.10+. Dependencies: numpy, pandas. Polars is optional: `uv add polars`.
 
 ## Quick start
 
