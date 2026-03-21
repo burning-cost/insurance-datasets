@@ -26,6 +26,8 @@ Or with `uv`:
 uv add insurance-datasets
 ```
 
+> 💬 Questions or feedback? Start a [Discussion](https://github.com/burning-cost/insurance-datasets/discussions). Found it useful? A ⭐ helps others find it.
+
 Requires Python 3.10+. Dependencies: numpy, pandas.
 
 ## Quick start
