@@ -55,7 +55,7 @@ print(f"Uploaded {uploaded} files")
 
 # Copy files to /tmp (writable) so pytest can create __pycache__
 notebook_content = r"""# Databricks notebook source
-# MAGIC %pip install statsmodels>=0.14.5 pytest>=8.0 pytest-timeout --quiet
+# MAGIC %pip install statsmodels>=0.14.5 pytest>=8.0 pytest-timeout polars>=0.20 --quiet
 
 # COMMAND ----------
 import subprocess, sys, os, shutil

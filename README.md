@@ -26,9 +26,17 @@ Or with `uv`:
 uv add insurance-datasets
 ```
 
+To use polars output:
+
+```bash
+pip install insurance-datasets[polars]
+# or
+uv add insurance-datasets[polars]
+```
+
 > 💬 Questions or feedback? Start a [Discussion](https://github.com/burning-cost/insurance-datasets/discussions). Found it useful? A ⭐ helps others find it.
 
-Requires Python 3.10+. Dependencies: numpy, pandas.
+Requires Python 3.10+. Dependencies: numpy, pandas. Polars is optional: `pip install polars`.
 
 ## Quick start
 
@@ -41,6 +49,17 @@ home  = load_home(n_policies=50_000, seed=42)
 print(motor.shape)   # (50000, 18)
 print(home.shape)    # (50000, 16)
 ```
+
+If you prefer polars, pass `polars=True`:
+
+```python
+motor_pl = load_motor(n_policies=50_000, seed=42, polars=True)
+home_pl  = load_home(n_policies=50_000, seed=42, polars=True)
+
+print(type(motor_pl))  # <class 'polars.dataframe.frame.DataFrame'>
+```
+
+Polars is an optional dependency. If it is not installed you will get a clear `ImportError` with install instructions.
 
 ---
 

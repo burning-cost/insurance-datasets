@@ -48,10 +48,16 @@ so test code can check GLM recovery.
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Final
+from typing import Final, Union
 
 import numpy as np
 import pandas as pd
+
+try:
+    import polars as pl
+    _POLARS_AVAILABLE = True
+except ImportError:
+    _POLARS_AVAILABLE = False
 
 # ---------------------------------------------------------------------------
 # True DGP parameters
@@ -370,7 +376,8 @@ def _generate_claims(
 def load_home(
     n_policies: int = 50_000,
     seed: int = 42,
-) -> pd.DataFrame:
+    polars: bool = False,
+) -> "Union[pd.DataFrame, pl.DataFrame]":
     """
     Load a synthetic UK household insurance dataset.
 
@@ -387,10 +394,14 @@ def load_home(
         estimates. Use 5,000-10,000 for quick tests.
     seed : int
         Random seed for reproducibility.
+    polars : bool
+        If True, return a polars DataFrame instead of pandas. Polars is an
+        optional dependency — install it with ``pip install polars`` if needed.
+        Default False.
 
     Returns
     -------
-    pd.DataFrame
+    pd.DataFrame or pl.DataFrame
         One row per policy with columns:
 
         - ``policy_id`` : int — sequential identifier
@@ -418,6 +429,9 @@ def load_home(
     (10000, 16)
     >>> df["claim_count"].sum() / df["exposure"].sum()  # claim frequency
     # approximately 0.05-0.07
+    >>> df_pl = load_home(n_policies=1_000, seed=0, polars=True)
+    >>> type(df_pl).__name__
+    'DataFrame'
 
     Notes
     -----
@@ -427,6 +441,8 @@ def load_home(
 
     There are no missing values by design.
     """
+    if polars and not _POLARS_AVAILABLE:
+        raise ImportError("Install polars: pip install polars")
     rng = np.random.default_rng(seed)
 
     df = _generate_policies(n_policies, rng)
@@ -467,4 +483,7 @@ def load_home(
     df["incurred"] = df["incurred"].astype(float)
     df["exposure"] = df["exposure"].astype(float)
 
-    return df.reset_index(drop=True)
+    df = df.reset_index(drop=True)
+    if polars:
+        return pl.from_pandas(df)
+    return df
