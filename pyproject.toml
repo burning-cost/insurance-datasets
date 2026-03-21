@@ -25,6 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 polars = [
     "polars>=0.20",
+    "pyarrow>=12.0",
 ]
 dev = [
     "pytest>=8.0",
