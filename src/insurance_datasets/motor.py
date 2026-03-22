@@ -388,6 +388,8 @@ def load_motor(
     """
     if polars and not _POLARS_AVAILABLE:
         raise ImportError("Install polars: pip install polars")
+    if n_policies < 1:
+        raise ValueError(f"n_policies must be >= 1; got {n_policies}")
     rng = np.random.default_rng(seed)
 
     df = _generate_policies(n_policies, rng)
