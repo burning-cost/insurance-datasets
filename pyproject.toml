@@ -13,6 +13,8 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
 ]
@@ -27,17 +29,12 @@ polars = [
     "polars>=0.20",
     "pyarrow>=12.0",
 ]
-dev = [
-    "pytest>=8.0",
-    # statsmodels>=0.14.5 is required: 0.14.4 and earlier use scipy._lib._util._lazywhere
-    # which was removed in scipy 1.16+. The fix landed in statsmodels 0.14.5 (Jul 2024)
-    # and was completed in 0.14.6 (Dec 2024).
-    "statsmodels>=0.14.5",
-]
 
 [project.urls]
 Homepage = "https://github.com/burning-cost/insurance-datasets"
 Repository = "https://github.com/burning-cost/insurance-datasets"
+Issues = "https://github.com/burning-cost/insurance-datasets/issues"
+Documentation = "https://github.com/burning-cost/insurance-datasets#readme"
 
 [build-system]
 requires = ["hatchling"]
@@ -51,5 +48,9 @@ testpaths = ["tests"]
 
 [dependency-groups]
 dev = [
+    "pytest>=8.0",
+    # statsmodels>=0.14.5 is required: 0.14.4 and earlier use scipy._lib._util._lazywhere
+    # which was removed in scipy 1.16+. The fix landed in statsmodels 0.14.5 (Jul 2024)
+    # and was completed in 0.14.6 (Dec 2024).
     "statsmodels>=0.14.6",
 ]
