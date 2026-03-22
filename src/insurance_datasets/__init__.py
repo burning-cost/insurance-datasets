@@ -38,4 +38,9 @@ __all__ = [
     "HOME_TRUE_SEV_PARAMS",
 ]
 
-__version__ = "0.1.3"
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("insurance-datasets")
+except PackageNotFoundError:
+    __version__ = "0.0.0"  # not installed
