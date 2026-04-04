@@ -2,8 +2,9 @@
 
 [![CI](https://github.com/burning-cost/insurance-datasets/actions/workflows/ci.yml/badge.svg)](https://github.com/burning-cost/insurance-datasets/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/insurance-datasets)](https://pypi.org/project/insurance-datasets/)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
+[![Downloads](https://img.shields.io/pypi/dm/insurance-datasets)](https://pypi.org/project/insurance-datasets/)
+[![Python](https://img.shields.io/pypi/pyversions/insurance-datasets)](https://pypi.org/project/insurance-datasets/)
+[![License](https://img.shields.io/pypi/l/insurance-datasets)](https://pypi.org/project/insurance-datasets/)
 
 Synthetic UK insurance datasets with known data generating processes. Built for testing pricing models — this is the dataset used throughout the [Burning Cost training course](https://burning-cost.github.io/course/).
 
